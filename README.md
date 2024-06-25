@@ -1,2 +1,1 @@
-# utils
-Bash Scripts Utils
+# Golang Utility Functions
