@@ -55,14 +55,31 @@ func RunFuncWithArgs(funcsAndArgs ...interface{}) error {
 		// Determine the number of input arguments the function expects
 		numIn := currentFunc.Type().NumIn()
 
+		// Check if variadic arguments are allowed
+		isVariadic := currentFunc.Type().IsVariadic()
+
 		// Create a slice to store the input arguments
-		args := make([]reflect.Value, 0, numIn)
+		args := []reflect.Value{}
 
 		// Iterate over the input arguments for the function
 		for j := 0; j < numIn && i+1 < len(funcsAndArgs); j++ {
 			// Get the next item in the sequence
 			nextItem := funcsAndArgs[i+1]
 			nextItemValue := reflect.ValueOf(nextItem)
+
+			// Check if variadic arguments are allowed
+			if isVariadic && j >= numIn-1 {
+				// Collect all remaining arguments of the appropriate type
+				for ; i+1 < len(funcsAndArgs); i++ {
+					nextItem := funcsAndArgs[i+1]
+					nextItemValue := reflect.ValueOf(nextItem)
+					if !nextItemValue.Type().AssignableTo(currentFunc.Type().In(numIn - 1).Elem()) {
+						break
+					}
+					args = append(args, nextItemValue)
+				}
+				break
+			}
 
 			// Check if the next item is assignable to the current function's input argument type
 			if !nextItemValue.Type().AssignableTo(currentFunc.Type().In(j)) {
@@ -78,7 +95,7 @@ func RunFuncWithArgs(funcsAndArgs ...interface{}) error {
 		}
 
 		// Check if the number of input arguments collected matches the expected number
-		if len(args) != numIn {
+		if len(args) < numIn {
 			// If not, return an error
 			return fmt.Errorf("not enough arguments for function: expected %d, got %d", numIn, len(args))
 		}
